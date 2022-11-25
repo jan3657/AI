@@ -1,153 +1,105 @@
-# In[0]:
 import pandas as pd
 import numpy as np
 import graphviz
-from sklearn.tree import DecisionTreeClassifier # Import Decision Tree Classifier
-from sklearn.model_selection import train_test_split # Import train_test_split function
-from sklearn import metrics #Import scikit-learn metrics module for accuracy calculation
+from sklearn.tree import DecisionTreeClassifier  # Import Decision Tree Classifier
+from sklearn.model_selection import train_test_split  # Import train_test_split function
+from sklearn import metrics  # Import scikit-learn metrics module for accuracy calculation
 from sklearn import preprocessing
 from sklearn.tree import export_graphviz
-from six import StringIO 
-from IPython.display import Image  
+from six import StringIO
+from IPython.display import Image
 import pydotplus
 
 data = pd.read_csv('./nbadata.txt')
-pd.set_option('display.max_columns',100)
+pd.set_option('display.max_columns', 100)
 
 awayAbbrTrans = preprocessing.LabelEncoder()
 homeAbbrTrans = preprocessing.LabelEncoder()
 
-data['gmDate'] = pd.to_numeric(data.gmDate.str.replace('-',''))
+data['gmDate'] = pd.to_numeric(data.gmDate.str.replace('-', ''))
 data['awayAbbr'] = awayAbbrTrans.fit_transform(data.awayAbbr)
 data['homeAbbr'] = homeAbbrTrans.fit_transform(data.homeAbbr)
-data['gmSeason'] = pd.to_numeric(data.gmSeason.str.replace('-',''))
-
-
+data['gmSeason'] = pd.to_numeric(data.gmSeason.str.replace('-', ''))
+                           
 data['homeWin'] = data['homePTS'] > data['awayPTS']
+data['homeWin'] = (data['homeWin'].astype(int)).replace(0, -1)
+data.sort_values(by=["gmDate"])
 
-feature_cols = [i for i in list(data.columns) if i != 'homeWin'] #Select all colums except homeWin as features
-X = data[feature_cols]
-y = data['homeWin']
+def getHomeFilter(team, date):
+    dataFilter = ((data["homeAbbr"] == team) & (data["gmDate"] <= date))
+    return dataFilter
+def getAwayFilter(team, date):
+    dataFilter = ((data["awayAbbr"] == team) & (data["gmDate"] <= date))
+    return dataFilter
 
+array_of_arrays = []
 
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=1) # 70% training and 30% test
+for index, row in data.head(300).iterrows():
+    if(index % 100 == 0):
+        print("iter", index,)
+    dataFilter = getHomeFilter(row['homeAbbr'], row['gmDate'])
+    awayFilter = getAwayFilter(row['awayAbbr'], row['gmDate'])
+    array_of_arrays.append([
+        row['gmDate'],  # TEAM IDX
+        homeAbbrTrans.inverse_transform([row['homeAbbr']])[0],
+        (data.loc[dataFilter, ['homeDayOff']][-3:].mean()[0].round(2)),
+        (data.loc[dataFilter, ['homePTS']][-3:].mean()[0].round(2)),  # AVG Team Home points
+        (data.loc[dataFilter, ['homeAST']][-3:].mean()[0].round(2)),
+        (data.loc[dataFilter, ['homeTO']][-3:].mean()[0].round(2)),
+        (data.loc[dataFilter, ['homeSTL']][-3:].mean()[0].round(2)),
+        (data.loc[dataFilter, ['homeBLK']][-3:].mean()[0].round(2)),
+        (data.loc[dataFilter, ['homePF']][-3:].mean()[0]).round(2),
+        (data.loc[dataFilter, ['homeFGA']][-3:].mean()[0].round(2)),
+        (data.loc[dataFilter, ['homeFGM']][-3:].mean()[0].round(2)),
+        (data.loc[dataFilter, ['home2PA']][-3:].mean()[0].round(2)),
+        (data.loc[dataFilter, ['home2PM']][-3:].mean()[0].round(2)),
+        (data.loc[dataFilter, ['home3PA']][-3:].mean()[0].round(2)),
+        (data.loc[dataFilter, ['home3PM']][-3:].mean()[0].round(2)),
+        (data.loc[dataFilter, ['homeFTA']][-3:].mean()[0].round(2)),
+        (data.loc[dataFilter, ['homeFTM']][-3:].mean()[0].round(2)),
+        (data.loc[dataFilter, ['homeORB']][-3:].mean()[0].round(2)),
+        (data.loc[dataFilter, ['homeDRB']][-3:].mean()[0].round(2)),
+        (data.loc[dataFilter, ['homeTRB']][-3:].mean()[0].round(2)),
+        (data.loc[dataFilter, ['homePTS1']][-3:].mean()[0].round(2)),
+        (data.loc[dataFilter, ['homePTS2']][-3:].mean()[0].round(2)),
+        (data.loc[dataFilter, ['homePTS3']][-3:].mean()[0].round(2)),
+        (data.loc[dataFilter, ['homePTS4']][-3:].mean()[0].round(2)),
+        (data.loc[dataFilter, ['homePTSEx']][-3:].mean()[0].round(2)),
 
+        (awayAbbrTrans.inverse_transform([row['awayAbbr']])[0]),
+        (data.loc[dataFilter, ['awayDayOff']][-3:].mean()[0].round(2)),
+        (data.loc[dataFilter, ['awayPTS']][-3:].mean()[0].round(2)),  # AVG Team Home points
+        (data.loc[dataFilter, ['awayAST']][-3:].mean()[0].round(2)),
+        (data.loc[dataFilter, ['awayTO']][-3:].mean()[0].round(2)),
+        (data.loc[dataFilter, ['awaySTL']][-3:].mean()[0].round(2)),
+        (data.loc[dataFilter, ['awayBLK']][-3:].mean()[0].round(2)),
+        (data.loc[dataFilter, ['awayPF']][-3:].mean()[0]).round(2),
+        (data.loc[dataFilter, ['awayFGA']][-3:].mean()[0].round(2)),
+        (data.loc[dataFilter, ['awayFGM']][-3:].mean()[0].round(2)),
+        (data.loc[dataFilter, ['away2PA']][-3:].mean()[0].round(2)),
+        (data.loc[dataFilter, ['away2PM']][-3:].mean()[0].round(2)),
+        (data.loc[dataFilter, ['away3PA']][-3:].mean()[0].round(2)),
+        (data.loc[dataFilter, ['away3PM']][-3:].mean()[0].round(2)),
+        (data.loc[dataFilter, ['awayFTA']][-3:].mean()[0].round(2)),
+        (data.loc[dataFilter, ['awayFTM']][-3:].mean()[0].round(2)),
+        (data.loc[dataFilter, ['awayORB']][-3:].mean()[0].round(2)),
+        (data.loc[dataFilter, ['awayDRB']][-3:].mean()[0].round(2)),
+        (data.loc[dataFilter, ['awayTRB']][-3:].mean()[0].round(2)),
+        (data.loc[dataFilter, ['awayPTS1']][-3:].mean()[0].round(2)),
+        (data.loc[dataFilter, ['awayPTS2']][-3:].mean()[0].round(2)),
+        (data.loc[dataFilter, ['awayPTS3']][-3:].mean()[0].round(2)),
+        (data.loc[dataFilter, ['awayPTS4']][-3:].mean()[0].round(2)),
+        (data.loc[dataFilter, ['awayPTSEx']][-3:].mean()[0].round(2)),
 
-clf_tree = DecisionTreeClassifier() # Create Decision Tree classifer object
-clf_tree = clf_tree.fit(X_train,y_train) # Train Decision Tree Classifer
-y_pred = clf_tree.predict(X_test) #Predict the response for test dataset
-
-
-print("Accuracy:",metrics.accuracy_score(y_test, y_pred))
-
-
-
-dot_data = StringIO()
-export_graphviz(clf_tree, out_file=dot_data,  
-                filled=True, rounded=True,
-                special_characters=True,feature_names = feature_cols,class_names=['0','1'])
-graph = pydotplus.graph_from_dot_data(dot_data.getvalue())  
-graph.write_png('tree.png')
-Image(graph.create_png())
-
-
-teams = data['homeAbbr'].unique()
-home_teams = (pd.concat([
-                    pd.DataFrame(
-                    [
-                        [
-                        team, #TEAM IDX
-                        homeAbbrTrans.inverse_transform([team])[0], #TEAM Name
-                        (data.loc[data["homeAbbr"] == team, ['homeDayOff']].mean()[0]),
-                        (data.loc[data["homeAbbr"] == team, ['homePTS']].mean()[0]), #AVG Team Home points              
-                        (data.loc[data["homeAbbr"] == team, ['homeAST']].mean()[0]),    
-                        (data.loc[data["homeAbbr"] == team, ['homeTO']].mean()[0]), 
-                        (data.loc[data["homeAbbr"] == team, ['homeSTL']].mean()[0]),     
-                        (data.loc[data["homeAbbr"] == team, ['homeBLK']].mean()[0]),     
-                        (data.loc[data["homeAbbr"] == team, ['homePF']].mean()[0]),     
-                        (data.loc[data["homeAbbr"] == team, ['homeFGA']].mean()[0]),
-                        (data.loc[data["homeAbbr"] == team, ['homeFGM']].mean()[0]),
-                        (data.loc[data["homeAbbr"] == team, ['home2PA']].mean()[0]),     
-                        (data.loc[data["homeAbbr"] == team, ['home2PM']].mean()[0]),     
-                        (data.loc[data["homeAbbr"] == team, ['home3PA']].mean()[0]),     
-                        (data.loc[data["homeAbbr"] == team, ['home3PM']].mean()[0]),
-                        (data.loc[data["homeAbbr"] == team, ['homeFTA']].mean()[0]),     
-                        (data.loc[data["homeAbbr"] == team, ['homeFTM']].mean()[0]),     
-                        (data.loc[data["homeAbbr"] == team, ['homeORB']].mean()[0]),     
-                        (data.loc[data["homeAbbr"] == team, ['homeDRB']].mean()[0]),     
-                        (data.loc[data["homeAbbr"] == team, ['homeTRB']].mean()[0]),  
-                        (data.loc[data["homeAbbr"] == team, ['homePTS1']].mean()[0]), 
-                        (data.loc[data["homeAbbr"] == team, ['homePTS2']].mean()[0]),     
-                        (data.loc[data["homeAbbr"] == team, ['homePTS3']].mean()[0]),     
-                        (data.loc[data["homeAbbr"] == team, ['homePTS4']].mean()[0]),     
-                        (data.loc[data["homeAbbr"] == team, ['homePTSEx']].mean()[0])     
-                        ]
-                    ],
-                    columns=(['AbbrIdx','Abbr','DayOff','PTS','AST','TO','STL','BLK','PF','FGA','FGM','2PA','2PM','3PA','3PM','FTA','FTM','ORB','DRB','TRB','PTS1','PTS2','PTS3','PTS4','PTSEx'])
-                            
-                    )
-                    for team in teams
-                   ],
-        ignore_index=True))
-
-away_teams = (pd.concat([
-                    pd.DataFrame(
-                    [
-                        [
-                        team, #TEAM IDX
-                        awayAbbrTrans.inverse_transform([team])[0], #TEAM Name
-                        (data.loc[data["awayAbbr"] == team, ['awayDayOff']].mean()[0]),
-                        (data.loc[data["awayAbbr"] == team, ['awayPTS']].mean()[0]), #AVG Team away points                        
-                        (data.loc[data["awayAbbr"] == team, ['awayAST']].mean()[0]),    
-                        (data.loc[data["awayAbbr"] == team, ['awayTO']].mean()[0]), 
-                        (data.loc[data["awayAbbr"] == team, ['awaySTL']].mean()[0]),     
-                        (data.loc[data["awayAbbr"] == team, ['awayBLK']].mean()[0]),     
-                        (data.loc[data["awayAbbr"] == team, ['awayPF']].mean()[0]),     
-                        (data.loc[data["awayAbbr"] == team, ['awayFGA']].mean()[0]),
-                        (data.loc[data["awayAbbr"] == team, ['awayFGM']].mean()[0]),
-                        (data.loc[data["awayAbbr"] == team, ['away2PA']].mean()[0]),     
-                        (data.loc[data["awayAbbr"] == team, ['away2PM']].mean()[0]),     
-                        (data.loc[data["awayAbbr"] == team, ['away3PA']].mean()[0]),     
-                        (data.loc[data["awayAbbr"] == team, ['away3PM']].mean()[0]),
-                        (data.loc[data["awayAbbr"] == team, ['awayFTA']].mean()[0]),     
-                        (data.loc[data["awayAbbr"] == team, ['awayFTM']].mean()[0]),     
-                        (data.loc[data["awayAbbr"] == team, ['awayORB']].mean()[0]),     
-                        (data.loc[data["awayAbbr"] == team, ['awayDRB']].mean()[0]),     
-                        (data.loc[data["awayAbbr"] == team, ['awayTRB']].mean()[0]),  
-                        (data.loc[data["awayAbbr"] == team, ['awayPTS1']].mean()[0]), 
-                        (data.loc[data["awayAbbr"] == team, ['awayPTS2']].mean()[0]),     
-                        (data.loc[data["awayAbbr"] == team, ['awayPTS3']].mean()[0]),     
-                        (data.loc[data["awayAbbr"] == team, ['awayPTS4']].mean()[0]),     
-                        (data.loc[data["awayAbbr"] == team, ['awayPTSEx']].mean()[0])     
-                        ]
-                    ],
-                    columns=(['AbbrIdx','Abbr','DayOff','PTS','AST','TO','STL','BLK','PF','FGA','FGM','2PA','2PM','3PA','3PM','FTA','FTM','ORB','DRB','TRB','PTS1','PTS2','PTS3','PTS4','PTSEx'])
-                            
-                    )
-                    for team in teams
-                   ],
-        ignore_index=True))
-
-home_teams.set_index('Abbr', inplace=True)
-away_teams.set_index('Abbr', inplace=True)
+        (data.loc[dataFilter & awayFilter, ['homeWin']].sum()[0]),
+        (data.loc[dataFilter, ['homeWin']][-1:].sum()[0])
 
 
 
-pred = clf_tree.predict(X_test) #Predict the response for test dataset
+    ])
 
-
-def predict(season,date,away_team,home_team):
-    d = {'gmSeason' : pd.to_numeric(season.replace('-','')), 'gmDate' : pd.to_numeric(date.replace('-',''))}
-    season_date = pd.Series(data=d, index=['gmSeason', 'gmDate'])
-    away_team = (away_teams.loc[away_team]).add_prefix('away')
-    home_team = (home_teams.loc[home_team]).add_prefix('home')
-    generated_game = pd.concat([season_date,away_team,home_team])
-    return(generated_game)
-
-x = [predict(str(row['gmSeason']),str(row['gmDate']),(awayAbbrTrans.inverse_transform([row['awayAbbr']])[0]),(awayAbbrTrans.inverse_transform([row['homeAbbr']])[0])) for index, row in X_test.iterrows()]
-df = (pd.concat(x,axis=1)).transpose()
-
-y_pred = clf_tree.predict(df)
-print("Accuracy:",metrics.accuracy_score(y_test, y_pred))
-
+homeAvgStats = pd.DataFrame(array_of_arrays, columns=(
+    ['gmDate', 'homeAbbr', 'homeDayOff', 'homePTS', 'homeAST', 'homeTO', 'homeSTL', 'homeBLK', 'homePF', 'homeFGA', 'homeFGM', 'home2PA', 'home2PM', 'home3PA', 'home3PM',
+     'homeFTA','homeFTM', 'homeORB', 'homeDRB', 'homeTRB', 'homePTS1', 'homePTS2', 'homePTS3', 'homePTS4', 'homePTSEx', 'awayAbbr', 'awayDayOff', 'awayPTS', 'awayAST', 'awayTO', 'awaySTL', 'awayBLK', 'awayPF', 'awayFGA', 'awayFGM', 'away2PA', 'away2PM', 'away3PA', 'away3PM',
+     'awayFTA','awayFTM', 'awayORB', 'awayDRB', 'awayTRB', 'awayPTS1', 'awayPTS2', 'awayPTS3', 'awayPTS4', 'awayPTSEx', 'homeWinDiff', 'homeWin']))
 
